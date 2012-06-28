@@ -6,4 +6,4 @@ detect race condition in net flow
 detect race condition in android process
 3. filedroid
 detect race condition in file system of android
-The first part I try to develop is the Netdroid. My first aim is to sniffer all the net flow using man-in-the-middle attack. 2012-6-28
+2012-6-28: The first part I try to develop is the Netdroid. My first aim is to sniffer all the net flow using man-in-the-middle attack.
