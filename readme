@@ -1,3 +1,9 @@
-1. wsgiproxy.
-2. goagent中，proxy.exe负责对https的网站进行证书签名，该exe程序为7zip自解压程序，内部为编译好的python字节码pyo文件，具体代码未知。
-3. 在android环境中如何运行python程序？
+Racedroid is a project I try to develop to detect the race condition vulnerability in android platform.
+It contains three parts at present:
+1. Netdroid
+detect race condition in net flow
+2. Procdroid
+detect race condition in android process
+3. filedroid
+detect race condition in file system of android
+The first part I try to develop is the Netdroid. My first aim is to sniffer all the net flow using man-in-the-middle attack. 2012-6-28
