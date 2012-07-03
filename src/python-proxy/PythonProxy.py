@@ -190,7 +190,7 @@ def init_logger(lvl = 'NOTSET'): #racedroid patch
     global logger
     logname = '%s-%.4d.log'%(strftime('%Y-%m-%d', gmtime()),
                              random.randint(0, 9999))
-    formatter = '%(asctime)s - %(client)s - %(target)s:\n%(message)s'
+    formatter = '%(asctime)s - %(target)s - %(client)s:\n%(message)s'
     #filemode = ab ensure binary package to be logged
     #format key argument need to be a string in basicConfig
     logging.basicConfig(filename=logname, filemode='ab',
