@@ -81,7 +81,7 @@ Qual a diferença entre um proxy Elite, Anónimo e Transparente?
 
 """
 
-import socket, thread, select, ssl, threading
+import socket, thread, select, ssl
 import logging, random, os
 from urlparse import urlparse
 from CertUtil import CertUtil
@@ -91,7 +91,7 @@ __version__ = '0.1.1'
 BUFLEN = 8192
 VERSION = 'Python Proxy/'+__version__
 HTTPVER = 'HTTP/1.1'
-__DEBUG__ = True
+__DEBUG__ = False
 logger = None
 
 class ConnectionHandler:
@@ -101,7 +101,6 @@ class ConnectionHandler:
         self.target = None
         self.client_buffer = ''
         self.timeout = timeout
-        self.lock = threading.Lock()
         self.sock_info = {'client':None,
                           'target':None} #racedroid patch
         self.method, self.path, self.protocol = self.get_base_header()

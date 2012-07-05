@@ -1,11 +1,9 @@
 import OpenSSL
 import threading
 import os
-import logging
 import hashlib
 import time
 
-logging.basicConfig(level=logging.ERROR, format='%(levelname)s - - %(asctime)s %(message)s', datefmt='[%d/%b/%Y %H:%M:%S]')
 
 class CertUtil(object):
     '''CertUtil module, based on WallProxy 0.4.0'''
@@ -103,7 +101,7 @@ class CertUtil(object):
                                                                         60*60*24*7305), host=host)
         return (CertUtil.dumpPEM(pkey, 0), CertUtil.dumpPEM(cert, 2))
 
-    # GAEProxy Patch
+    # racedroid Patch
     @staticmethod
     def getCertificate(host):
         basedir = os.getcwd()
@@ -118,7 +116,7 @@ class CertUtil(object):
         if not os.path.isfile(keyFile):
             with CertUtil.CALock:
                 if not os.path.isfile(keyFile):
-                    logging.info('CertUtil getCertificate for %r', host)
+                    print 'CertUtil getCertificate for %r' %host
                     # FIXME: howto generate a suitable serial number?
                     for serial in (int(hashlib.md5(host).hexdigest(), 16), int(time.time()*100)):
                         try:
@@ -127,7 +125,7 @@ class CertUtil(object):
                             CertUtil.writeFile(keyFile, key)
                             break
                         except Exception:
-                            logging.exception('CertUtil.makeCert failed: host=%r, serial=%r', host, serial)
+                            print 'CertUtil.makeCert failed: host=%r, serial=%r' %(host, serial)
                     else:
                         keyFile = os.path.join(basedir, 'CA.key')
                         crtFile = os.path.join(basedir, 'CA.crt')
@@ -141,7 +139,7 @@ class CertUtil(object):
         crtFile = os.path.join(basedir, 'CA.crt')
         if not os.path.exists(keyFile):
             if not OpenSSL:
-                logging.critical('CA.crt is not exist and OpenSSL is disabled, ABORT!')
+                print 'CA.crt is not exist and OpenSSL is disabled, ABORT!'
                 return False
             key, crt = CertUtil.makeCA()
             CertUtil.writeFile(keyFile, key)
