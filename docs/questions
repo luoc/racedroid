@@ -4,8 +4,21 @@
  2.1 合并数据包，合并步骤为将消息头%(asctime)s等去掉，其中回车换行符都需要去掉
  2.2 将0D 0A替换为0A，貌似日志记录的时候将0A都统一替换为0D 0A了，导致文件大小变大。考虑采用ab格式的日志记录，在‘ab'格式记录下，不需要此步骤。
 3. 解密SSL，如何在HTTPS中进行编程？
-采用SSL进行解密
-
+采用SSL进行解密，注意对socket进行wrap需要在发送代理消息之后进行
+4. openssl生成证书？
+http://code.google.com/p/goagent/issues/detail?id=2520，记得去除key中的密码，否则不能直接在ssl模块中使用
+ 4.1 openssl req -new -x509 -extensions v3_ca -keyout ca.key -out ca.crt -days 3650 -config ./openssl.cnf
+ 4.2 openssl rsa -in ca.key -out new.ca.key #delete the passphase
+5. 利用openssl生成的证书进行网站证书的生成？
+http://skippylovesmalorie.wordpress.com/2010/02/12/how-to-generate-a-self-signed-certificate-using-pyopenssl/
+http://blog.csdn.net/darkstar21cn/article/details/392492
+ 5.1 产生一个rsa随机key
+ openssl genrsa -out server.key 1024
+ 5.2 生成一个签名请求文件
+ openssl req -new -key server.key -out server.csr -config openssl.cnf
+ 5.3 用ca对前面请求文件进行签名
+ Openssl ca -in server.csr -out server.crt -cert ca.crt -keyfile ca.key -config openssl.cnf
+6. 证书格式问题
 1. wsgiproxy.
 2. goagent中，proxy.exe负责对https的网站进行证书签名，该exe程序为7zip自解压程序，内部为编译好的python字节码pyo文件，具体代码未知。
 3. 在android环境中如何运行python程序？

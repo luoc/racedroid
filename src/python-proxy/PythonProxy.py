@@ -81,8 +81,10 @@ Qual a diferença entre um proxy Elite, Anónimo e Transparente?
 
 """
 
-import socket, thread, select, ssl
+import socket, thread, select, ssl, threading
 import logging, random, os
+from urlparse import urlparse
+from CertUtil import CertUtil
 from time import strftime, gmtime
 
 __version__ = '0.1.1'
@@ -93,17 +95,17 @@ __DEBUG__ = True
 logger = None
 
 class ConnectionHandler:
-    def __init__(self, connection, address, timeout, cert_file, key_file):
+    def __init__(self, connection, address, timeout):
         global logger #racedroid patch
         self.client = connection
         self.target = None
         self.client_buffer = ''
         self.timeout = timeout
-        self.cert_file = cert_file if os.path.exists(cert_file) else None
-        self.key_file = key_file if os.path.exists(key_file) else None
+        self.lock = threading.Lock()
         self.sock_info = {'client':None,
                           'target':None} #racedroid patch
         self.method, self.path, self.protocol = self.get_base_header()
+        self.host = self._find_host(self.path)
         if self.method=='CONNECT':
             self.method_CONNECT()
         elif self.method in ('OPTIONS', 'GET', 'HEAD', 'POST', 'PUT',
@@ -147,6 +149,14 @@ class ConnectionHandler:
         self.client_buffer = ''
         self._read_write()
 
+    def _find_host(self, url):
+        #Now only works for https, maybe need modification in the future
+        if r'://' in url:
+            host =  urlparse(url).hostname
+        else:
+            host = urlparse(r'https://' + url).hostname
+        return host
+
     def _connect_target(self, host):
         i = host.find(':')
         if i!=-1:
@@ -167,11 +177,16 @@ class ConnectionHandler:
         logger.info(msg, extra=self.sock_info)
 
     def _wrap_sock(self):
-        if self.target != None:
-            self.target = ssl.wrap_socket(self.target)
-        if self.client != None:
-            self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
-                                          certfile=self.cert_file, server_side=True)
+        try:
+            if self.target != None:
+                self.target = ssl.wrap_socket(self.target)
+            if self.client != None:
+                if CertUtil.checkCA():
+                    self.key_file, self.cert_file = CertUtil.getCertificate(self.host)#stupid bug
+                self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
+                                              certfile=self.cert_file, server_side=True)
+        except Exception, e:
+            print '%s' %e
 
     def _read_write(self):
         time_out_max = self.timeout/3
@@ -208,20 +223,21 @@ def init_logger(lvl = 'NOTSET'): #racedroid patch
                         format=formatter, level=lvl)
     logger = logging.getLogger('Proxy')
 
-def start_server(host='localhost', port=8080, IPv6=False, timeout=3600, # for debug
-                  handler=ConnectionHandler, cert_file='CA.crt', key_file='CA.key'):
+def start_server(host='localhost', port=8080, IPv6=False, timeout=60, # for debug
+                  handler=ConnectionHandler):
     if IPv6==True:
         soc_type=socket.AF_INET6
     else:
         soc_type=socket.AF_INET
     if __DEBUG__:
         socket.setdefaulttimeout(3600)
+        timeout = 3600
     soc = socket.socket(soc_type)
     soc.bind((host, port))
     print "Serving on %s:%d."%(host, port)#debug
     soc.listen(0)
     while 1:
-        thread.start_new_thread(handler, soc.accept()+(timeout,cert_file, key_file))
+        thread.start_new_thread(handler, soc.accept()+(timeout,))
 
 if __name__ == '__main__':
     init_logger() #racedroid patch
