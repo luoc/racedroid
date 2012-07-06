@@ -81,28 +81,40 @@ Qual a diferença entre um proxy Elite, Anónimo e Transparente?
 
 """
 
-import socket, thread, select, ssl
-import logging, random, os
+import sys
+sys.path.append('lib')
+import socket
+import thread
+import select
+import ssl
+import random
+import pkgfmt
+import logging
 from urlparse import urlparse
 from CertUtil import CertUtil
-from time import strftime, gmtime
+from time import strftime, localtime, time
+from lxml import etree
 
-__version__ = '0.1.1'
+
+__version__ = '0.2.0'
 BUFLEN = 8192
 VERSION = 'Python Proxy/'+__version__
 HTTPVER = 'HTTP/1.1'
 __DEBUG__ = False
 logger = None
+xmlfile = None
+xmllog = None
+
 
 class ConnectionHandler:
     def __init__(self, connection, address, timeout):
-        global logger #racedroid patch
         self.client = connection
         self.target = None
         self.client_buffer = ''
         self.timeout = timeout
         self.sock_info = {'client':None,
-                          'target':None} #racedroid patch
+                          'target':None}
+        self._start_logger()
         self.method, self.path, self.protocol = self.get_base_header()
         self.host = self._find_host(self.path)
         if self.method=='CONNECT':
@@ -121,7 +133,7 @@ class ConnectionHandler:
             end = self.client_buffer.find('\n')
             if end!=-1:
                 break
-        self._output_log(self.client_buffer) #racedroid patch
+        self._handle_pkg(self.client_buffer) #racedroid patch
         print '%s'%self.client_buffer[:end]
         data = (self.client_buffer[:end+1]).split()
         self.client_buffer = self.client_buffer[end+1:]
@@ -132,7 +144,7 @@ class ConnectionHandler:
         self.client.send(HTTPVER+' 200 Connection established\n'+
                          'Proxy-agent: %s\n\n'%VERSION)
         #after send the proxy hello message, we wrap the socket with ssl module
-        self._wrap_sock() #racedroid patch
+        self._wrap_sock(self.host) #racedroid patch
         self.client_buffer = ''
         self._read_write()
 
@@ -148,14 +160,6 @@ class ConnectionHandler:
         self.client_buffer = ''
         self._read_write()
 
-    def _find_host(self, url):
-        #Now only works for https, maybe need modification in the future
-        if r'://' in url:
-            host =  urlparse(url).hostname
-        else:
-            host = urlparse(r'https://' + url).hostname
-        return host
-
     def _connect_target(self, host):
         i = host.find(':')
         if i!=-1:
@@ -167,21 +171,13 @@ class ConnectionHandler:
         self.target = socket.socket(soc_family)
         self.target.connect(address)
 
-    def _output_log(self, msg): #racedroid patch
-        self.sock_info['client'] = (self.client, self.client.getsockname(),
-            self.client.getpeername()) if self.client != None else None
-        self.sock_info['target'] = (self.target, self.target.getsockname(),
-            self.target.getpeername()) if self.target != None else None
-            #getnameinfo seems take long time, so we could translate address in log function
-        logger.info(msg, extra=self.sock_info)
-
-    def _wrap_sock(self):
+    def _wrap_sock(self, host):
         try:
             if self.target != None:
                 self.target = ssl.wrap_socket(self.target)
             if self.client != None:
                 if CertUtil.checkCA():
-                    self.key_file, self.cert_file = CertUtil.getCertificate(self.host)#stupid bug
+                    self.key_file, self.cert_file = CertUtil.getCertificate(host)#stupid bug
                 self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
                                               certfile=self.cert_file, server_side=True)
         except Exception, e:
@@ -207,20 +203,69 @@ class ConnectionHandler:
                         out.send(data)
                         count = 0
                     if len(data): #racedroid patch
-                        self._output_log(data)
+                        self._handle_pkg(data)
             if count == time_out_max:
                 break
+        self._write_xml()
 
-def init_logger(lvl = 'NOTSET'): #racedroid patch
-    global logger
-    logname = '%s-%.4d.log'%(strftime('%Y-%m-%d', gmtime()),
-                             random.randint(0, 9999))
-    formatter = '%(asctime)s - %(target)s - %(client)s:\n%(message)s'
-    #filemode = ab ensure binary package to be logged
-    #format key argument need to be a string in basicConfig
-    logging.basicConfig(filename=logname, filemode='ab',
-                        format=formatter, level=lvl)
-    logger = logging.getLogger('Proxy')
+    def _start_logger(self, lvl='NOTSET'): #racedroid patch
+        global logger, xmlfile, xmllog
+        logname = '%s-%.4d'%(strftime('%Y-%m-%d', localtime()),
+                                 random.randint(0, 9999))
+        formatter = '%(asctime)s - %(target)s - %(client)s:\n%(message)s'
+        logging.basicConfig(filename=logname+'.log', filemode='ab',
+                            format=formatter, level=lvl)
+        logger = logging.getLogger('Proxy')
+        xmllog = pkgfmt.Log()
+        xmlfile = open(logname + '.xml', 'ab')
+
+    def _write_xml(self):
+        global xmlfile, xmllog, logger
+        if xmlfile != None:
+            xmlfile.write(etree.tostring(xmllog, pretty_print=True))
+            xmlfile.close()
+        else:
+            print 'write logger error!, logger is None!'
+
+    def _handle_pkg(self, pkg): #racedroid patch
+        global logger, xmlfile, xmllog
+        #logging
+        self.sock_info['client'] = (self.client, self.client.getsockname(),
+                                    self.client.getpeername()) if self.client != None else None
+        self.sock_info['target'] = (self.target, self.target.getsockname(),
+                                    self.target.getpeername()) if self.target != None else None
+        #getnameinfo seems take long time, so we could translate address in log function
+        logger.info(pkg, extra=self.sock_info)
+        #xml log
+        time = self._get_time()
+        client = str(self.sock_info['client'])
+        target = str(self.sock_info['target'])
+        end = pkg.find('\r\n\r\n')
+        if end != -1:
+            header = pkg[:end]
+            content = pkg[end+4:]
+        elif pkg.find(r'<') != -1 or pkg.find(r'>') != -1: #the pkg is header or content, both are possible
+            header = ''
+            content = pkg
+        else:
+            header = pkg
+            content = ''
+        xmllog.append(pkgfmt.Package(time, client, target, header, content))
+
+    def _get_time(self):
+        ct = time()
+        msecs = (ct - long(ct))*1000
+        t = strftime("%Y-%m-%d %H:%M:%S", localtime(ct))
+        s = "%s,%03d" % (t, msecs)
+        return s
+
+    def _find_host(self, url):
+        #Now only works for https, maybe need modification in the future
+        if r'://' in url:
+            host =  urlparse(url).hostname
+        else:
+            host = urlparse(r'https://' + url).hostname
+        return host
 
 def start_server(host='localhost', port=8080, IPv6=False, timeout=60, # for debug
                   handler=ConnectionHandler):
@@ -239,5 +284,4 @@ def start_server(host='localhost', port=8080, IPv6=False, timeout=60, # for debu
         thread.start_new_thread(handler, soc.accept()+(timeout,))
 
 if __name__ == '__main__':
-    init_logger() #racedroid patch
     start_server()

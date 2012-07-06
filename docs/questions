@@ -19,6 +19,12 @@ http://blog.csdn.net/darkstar21cn/article/details/392492
  5.3 用ca对前面请求文件进行签名
  Openssl ca -in server.csr -out server.crt -cert ca.crt -keyfile ca.key -config openssl.cnf
 6. 证书格式问题
-1. wsgiproxy.
-2. goagent中，proxy.exe负责对https的网站进行证书签名，该exe程序为7zip自解压程序，内部为编译好的python字节码pyo文件，具体代码未知。
+PEM
+7. 日志格式，打算采用lxml进行编写，如何静态链接lxml（相当麻烦，还需要c语言编译器）
+http://lxml.de/build.html#building-an-egg
+http://lxml.de/build.html#static-linking-on-windows
+8. xml对于控制字符不兼容，如何处理编码与可见性？
+9. 如何防止文件缓存导致的文件未写入磁盘而进程已经退出？
+
+
 3. 在android环境中如何运行python程序？

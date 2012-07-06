@@ -22,6 +22,15 @@ class CertUtil(object):
  DNS: *.android.com, DNS: *.fbcdn.net'
 
     @staticmethod
+    def _dir_exists(dir):
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        else:
+            if not os.path.isdir(dir):
+                os.remove(dir)
+                os.mkdir(dir)
+
+    @staticmethod
     def readFile(filename):
         content = None
         with open(filename, 'rb') as fp:
@@ -104,14 +113,15 @@ class CertUtil(object):
     # racedroid Patch
     @staticmethod
     def getCertificate(host):
+        CertUtil._dir_exists('certs')
         basedir = os.getcwd()
         keyFile = os.path.join(basedir, 'certs\\%s.key' % host)
         crtFile = os.path.join(basedir, 'certs\\%s.crt' % host)
         if os.path.exists(keyFile):
             return (keyFile, crtFile)
         if OpenSSL is None:
-            keyFile = os.path.join(basedir, 'CA.key')
-            crtFile = os.path.join(basedir, 'CA.crt')
+            keyFile = os.path.join(basedir, 'certs\\CA.key')
+            crtFile = os.path.join(basedir, 'certs\\CA.crt')
             return (keyFile, crtFile)
         if not os.path.isfile(keyFile):
             with CertUtil.CALock:
@@ -127,16 +137,17 @@ class CertUtil(object):
                         except Exception:
                             print 'CertUtil.makeCert failed: host=%r, serial=%r' %(host, serial)
                     else:
-                        keyFile = os.path.join(basedir, 'CA.key')
-                        crtFile = os.path.join(basedir, 'CA.crt')
+                        keyFile = os.path.join(basedir, 'certs\\CA.key')
+                        crtFile = os.path.join(basedir, 'certs\\CA.crt')
         return (keyFile, crtFile)
 
     @staticmethod
     def checkCA():
         #Check CA exists
+        CertUtil._dir_exists('certs')
         basedir = os.getcwd()
-        keyFile = os.path.join(basedir, 'CA.key')
-        crtFile = os.path.join(basedir, 'CA.crt')
+        keyFile = os.path.join(basedir, 'certs\\CA.key')
+        crtFile = os.path.join(basedir, 'certs\\CA.crt')
         if not os.path.exists(keyFile):
             if not OpenSSL:
                 print 'CA.crt is not exist and OpenSSL is disabled, ABORT!'
@@ -146,8 +157,8 @@ class CertUtil(object):
             CertUtil.writeFile(crtFile, crt)
             [os.remove(os.path.join('certs', x)) for x in os.listdir('certs')]
         if OpenSSL:
-            keyFile = os.path.join(basedir, 'CA.key')
-            crtFile = os.path.join(basedir, 'CA.crt')
+            keyFile = os.path.join(basedir, 'certs\\CA.key')
+            crtFile = os.path.join(basedir, 'certs\\CA.crt')
             cakey = CertUtil.readFile(keyFile)
             cacrt = CertUtil.readFile(crtFile)
             CertUtil.CA = (CertUtil.loadPEM(cakey, 0), CertUtil.loadPEM(cacrt, 2))
