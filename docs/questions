@@ -24,7 +24,12 @@ PEM
 http://lxml.de/build.html#building-an-egg
 http://lxml.de/build.html#static-linking-on-windows
 8. xml对于控制字符不兼容，如何处理编码与可见性？
+binascii.b2a_hex编码可以解决，采用此编码的另一个好处是可以直接多个包合并后再解压缩
 9. 如何防止文件缓存导致的文件未写入磁盘而进程已经退出？
+
+10. http-parse解析多个数据包
+11. xpath实现对xml树的解析
+12. 多线程logger名字的问题。
 
 
 3. 在android环境中如何运行python程序？

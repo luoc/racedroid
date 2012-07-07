@@ -101,9 +101,7 @@ BUFLEN = 8192
 VERSION = 'Python Proxy/'+__version__
 HTTPVER = 'HTTP/1.1'
 __DEBUG__ = False
-logger = None
-xmlfile = None
-xmllog = None
+
 
 
 class ConnectionHandler:
@@ -149,7 +147,6 @@ class ConnectionHandler:
         self._read_write()
 
     def method_others(self):
-        #TODO: only works for http protocol, not https!
         self.path = self.path[7:]
         i = self.path.find('/')
         host = self.path[:i]        
@@ -184,6 +181,7 @@ class ConnectionHandler:
             print '%s' %e
 
     def _read_write(self):
+        #TODO: fix log module bugs, multi connect cause file confusion
         time_out_max = self.timeout/3
         socs = [self.client, self.target]
         count = 0
@@ -206,51 +204,40 @@ class ConnectionHandler:
                         self._handle_pkg(data)
             if count == time_out_max:
                 break
-        self._write_xml()
+        if len(self.xmllog) != 0:
+            self._write_xml()
 
     def _start_logger(self, lvl='NOTSET'): #racedroid patch
-        global logger, xmlfile, xmllog
         logname = '%s-%.4d'%(strftime('%Y-%m-%d', localtime()),
                                  random.randint(0, 9999))
         formatter = '%(asctime)s - %(target)s - %(client)s:\n%(message)s'
         logging.basicConfig(filename=logname+'.log', filemode='ab',
                             format=formatter, level=lvl)
-        logger = logging.getLogger('Proxy')
-        xmllog = pkgfmt.Log()
-        xmlfile = open(logname + '.xml', 'ab')
+        self.logger = logging.getLogger('Race')
+        self.xmllog = pkgfmt.Log()
+        self.xmlfile = open(logname + '.xml', 'ab')
 
     def _write_xml(self):
-        global xmlfile, xmllog, logger
-        if xmlfile != None:
-            xmlfile.write(etree.tostring(xmllog, pretty_print=True))
-            xmlfile.close()
+        if self.xmlfile != None:
+            self.xmlfile.write(etree.tostring(self.xmllog, pretty_print=True))
+            self.xmlfile.close()
         else:
             print 'write logger error!, logger is None!'
 
     def _handle_pkg(self, pkg): #racedroid patch
-        global logger, xmlfile, xmllog
+        #one .log file and multiple .xml file, each .xml file represent one connection
         #logging
         self.sock_info['client'] = (self.client, self.client.getsockname(),
                                     self.client.getpeername()) if self.client != None else None
         self.sock_info['target'] = (self.target, self.target.getsockname(),
                                     self.target.getpeername()) if self.target != None else None
         #getnameinfo seems take long time, so we could translate address in log function
-        logger.info(pkg, extra=self.sock_info)
+        self.logger.info(pkg, extra=self.sock_info)
         #xml log
         time = self._get_time()
         client = str(self.sock_info['client'])
         target = str(self.sock_info['target'])
-        end = pkg.find('\r\n\r\n')
-        if end != -1:
-            header = pkg[:end]
-            content = pkg[end+4:]
-        elif pkg.find(r'<') != -1 or pkg.find(r'>') != -1: #the pkg is header or content, both are possible
-            header = ''
-            content = pkg
-        else:
-            header = pkg
-            content = ''
-        xmllog.append(pkgfmt.Package(time, client, target, header, content))
+        self.xmllog.append(pkgfmt.Package(time, client, target, pkg))
 
     def _get_time(self):
         ct = time()
