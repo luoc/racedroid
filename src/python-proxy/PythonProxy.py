@@ -237,7 +237,7 @@ class ConnectionHandler:
         time = self._get_time()
         client = str(self.sock_info['client'])
         target = str(self.sock_info['target'])
-        self.xmllog.append(pkgfmt.Package(time, client, target, pkg))
+        self.xmllog.append(pkgfmt.Package(pkg, time=time, client=client, target=target))
 
     def _get_time(self):
         ct = time()
