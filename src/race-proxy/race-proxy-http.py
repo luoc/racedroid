@@ -90,15 +90,16 @@ import ssl
 import random
 import pkgfmt
 import logging
+import os
 from urlparse import urlparse
-from CertUtil import CertUtil
+from certutil import CertUtil
 from time import strftime, localtime, time
 from lxml import etree
 
 
 __version__ = '0.2.0'
 BUFLEN = 8192
-VERSION = 'Python Proxy/'+__version__
+VERSION = 'race proxy http/'+__version__
 HTTPVER = 'HTTP/1.1'
 __DEBUG__ = False
 
@@ -169,16 +170,24 @@ class ConnectionHandler:
         self.target.connect(address)
 
     def _wrap_sock(self, host):
-        try:
-            if self.target != None:
+        if self.target:
+            try:
                 self.target = ssl.wrap_socket(self.target)
-            if self.client != None:
-                if CertUtil.checkCA():
-                    self.key_file, self.cert_file = CertUtil.getCertificate(host)#stupid bug
-                self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
-                                              certfile=self.cert_file, server_side=True)
-        except Exception, e:
-            print '%s' %e
+            except Exception, e:
+                print 'target wrap exception: %s' %e
+                self.target = ssl.wrap_socket(self.target, ssl_version=ssl.PROTOCOL_TLSv1)
+        #TODO: fix protocol version error
+        if self.client:
+            if CertUtil.checkCA():
+                self.key_file, self.cert_file = CertUtil.getCertificate(host)#stupid bug
+                try:
+                    self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
+                                                  certfile=self.cert_file, server_side=True)
+                except Exception, e:
+                    print 'client wrap exception: %s' %e
+                    self.client = ssl.wrap_socket(self.client, keyfile=self.key_file,
+                                                  certfile=self.cert_file, server_side=True,
+                                                  ssl_version=ssl.PROTOCOL_TLSv1)
 
     def _read_write(self):
         #TODO: fix log module bugs, multi connect cause file confusion
@@ -254,7 +263,7 @@ class ConnectionHandler:
             host = urlparse(r'https://' + url).hostname
         return host
 
-def start_server(host='localhost', port=8080, IPv6=False, timeout=60, # for debug
+def start_server(host='0.0.0.0', port=8080, IPv6=False, timeout=3600, # for debug
                   handler=ConnectionHandler):
     if IPv6==True:
         soc_type=socket.AF_INET6

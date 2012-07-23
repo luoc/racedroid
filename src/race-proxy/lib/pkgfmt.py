@@ -9,11 +9,7 @@ This file define the package format, looks like below:
             <client/>
             <target/>
         </info>
-        <header>
-            <Location/>
-            <.../>
-        </header>
-        <content base64="False">
+        <content encode="False">
         </content>
     </package>
 </log>

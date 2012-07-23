@@ -28,8 +28,20 @@ binascii.b2a_hex编码可以解决，采用此编码的另一个好处是可以�
 9. 如何防止文件缓存导致的文件未写入磁盘而进程已经退出？
 
 10. http-parse解析多个数据包
+ 10.1 修改了http-parse的状态机，将request数据包头后识别为已经完成
+ 10.2 修改了HttpParser没有environ属性的问题
+ 10.3 添加了first_line函数，避免丢失第一行数据包的情况
 11. xpath实现对xml树的解析
+ http://www.w3schools.com/xpath/xpath_syntax.asp
+ 对于每个遍历创建一个单独的函数，以利于写出易懂的代码
 12. 多线程logger名字的问题。
+ 暂时不考虑logger，对每个connection一个xml文件，便于后期的代码合并
+13. ssl和tls版本兼容的问题？
 
+14. ssl和tls的自动握手？
+在http代理中，握手时机不对会导致wrap出错，采用二进制的方式预计会正常，有待验证（引入问题15）
+
+15. 如何在没有数据包头判断的情况下鉴别代理的类型？
+端口？
 
 3. 在android环境中如何运行python程序？
